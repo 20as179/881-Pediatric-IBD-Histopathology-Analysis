@@ -15,6 +15,7 @@ from slicer.parameterNodeWrapper import (
 )
 
 from slicer import vtkMRMLScalarVolumeNode
+from slicer import vtkMRMLMarkupsFiducialNode
 
 
 #
@@ -29,11 +30,11 @@ class MyFirstModule(ScriptedLoadableModule):
 
     def __init__(self, parent):
         ScriptedLoadableModule.__init__(self, parent)
-        self.parent.title = _("MyFirstModule")  # TODO: make this more human readable by adding spaces
+        self.parent.title = _("My First Module")  # TODO: make this more human readable by adding spaces
         # TODO: set categories (folders where the module shows up in the module selector)
         self.parent.categories = [translate("qSlicerAbstractCoreModule", "Examples")]
         self.parent.dependencies = []  # TODO: add here list of module names that this module requires
-        self.parent.contributors = ["John Doe (AnyWare Corp.)"]  # TODO: replace with "Firstname Lastname (Organization)"
+        self.parent.contributors = ["Ally Shi (CISC 881)", "Laavanya Joshi (CISC 881)"]  # TODO: replace with "Firstname Lastname (Organization)"
         # TODO: update with short description of the module and a link to online module documentation
         # _() function marks text as translatable to other languages
         self.parent.helpText = _("""
@@ -117,7 +118,7 @@ class MyFirstModuleParameterNode:
     invertedVolume - The output volume that will contain the inverted thresholded volume.
     """
 
-    inputVolume: vtkMRMLScalarVolumeNode
+    inputVolume: vtkMRMLMarkupsFiducialNode #originally: vtkMRMLScalarVolumeNode
     imageThreshold: Annotated[float, WithinRange(-100, 500)] = 100
     invertThreshold: bool = False
     thresholdedVolume: vtkMRMLScalarVolumeNode
@@ -232,11 +233,11 @@ class MyFirstModuleWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self._checkCanApply()
 
     def _checkCanApply(self, caller=None, event=None) -> None:
-        if self._parameterNode and self._parameterNode.inputVolume and self._parameterNode.thresholdedVolume:
-            self.ui.applyButton.toolTip = _("Compute output volume")
+        if self._parameterNode and self._parameterNode.inputVolume: #and self._parameterNode.thresholdedVolume:
+            self.ui.applyButton.toolTip = _("Compute center of mass")
             self.ui.applyButton.enabled = True
         else:
-            self.ui.applyButton.toolTip = _("Select input and output volume nodes")
+            self.ui.applyButton.toolTip = _("Select input point list")
             self.ui.applyButton.enabled = False
 
     def onApplyButton(self) -> None:
@@ -245,6 +246,8 @@ class MyFirstModuleWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             # Compute output
             self.logic.process(self.ui.inputSelector.currentNode(), self.ui.outputSelector.currentNode(),
                                self.ui.imageThresholdSliderWidget.value, self.ui.invertOutputCheckBox.checked)
+
+            self.ui.centerOfMassValueLabel.text = str(self.logic.centerOfMass)
 
             # Compute inverted output (if needed)
             if self.ui.invertedOutputSelector.currentNode():
@@ -275,7 +278,34 @@ class MyFirstModuleLogic(ScriptedLoadableModuleLogic):
     def getParameterNode(self):
         return MyFirstModuleParameterNode(super().getParameterNode())
 
-    def process(self,
+    def getCenterOfMass(sef,markupsNode):
+        centerOfMass = [0,0,0]
+
+        import numpy as np
+        sumPos = np.zeros(3)
+        for i in range(markupsNode.GetNumberOfControlPoints()):
+            pos = markupsNode.GetNthControlPointPosition(i)
+            sumPos += pos
+
+        centerOfMass = sumPos / markupsNode.GetNumberOfControlPoints()
+        logging.info(f"Center of mass for {markupsNode.GetName()}: {centerOfMass}")
+
+        return centerOfMass
+
+    def process(self, inputMarkups, outputVolume, imageThreshold, enableScreenshots=0):
+        """
+        Compute center of mass of input markup points
+        :param inputMarkups:
+        :param outputVolume:
+        :param imageThreshold:
+        :param enableScreenshots:
+        :return:
+        """
+        self.centerOfMass = self.getCenterOfMass(inputMarkups)
+        return True
+
+    #DEFAULT PROCESS FUNCTION
+    '''def process(self,
                 inputVolume: vtkMRMLScalarVolumeNode,
                 outputVolume: vtkMRMLScalarVolumeNode,
                 imageThreshold: float,
@@ -311,7 +341,7 @@ class MyFirstModuleLogic(ScriptedLoadableModuleLogic):
         slicer.mrmlScene.RemoveNode(cliNode)
 
         stopTime = time.time()
-        logging.info(f"Processing completed in {stopTime-startTime:.2f} seconds")
+        logging.info(f"Processing completed in {stopTime-startTime:.2f} seconds")'''
 
 
 #
