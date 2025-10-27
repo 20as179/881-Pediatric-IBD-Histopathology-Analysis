@@ -20,17 +20,17 @@ def Convert2Multichannel(input_path, output_path):
     ihc_h = hed2rgb(np.stack((image_hed[:, :, 0], null, null), axis=-1))
     ax[1].imshow(ihc_h)
     ax[1].set_title("Hematoxylin")
-    print("test2")
+    print("testH")
 
     ihc_e = hed2rgb(np.stack((null, image_hed[:, :, 1], null), axis=-1))
     ax[2].imshow(ihc_e)
     ax[2].set_title("Eosin")
-    print("test")
+    print("testE")
 
     ihc_d = hed2rgb(np.stack((null, null, image_hed[:, :, 2]), axis=-1))
     ax[3].imshow(ihc_d)
     ax[3].set_title("DAB")
-    print("test3")
+    print("testD")
 
     # normalize H&E channels to [0, 1] range
     hematoxylin = (image_hed[:, :, 0] - image_hed[:, :, 0].min()) / (
@@ -42,20 +42,19 @@ def Convert2Multichannel(input_path, output_path):
     # combine channels
     multichannel_image = np.stack((hematoxylin, eosin, empty_channel), axis=-1)
     print(f"Multichannel image saved as {output_path}")
-    return multichannel_image
 
     # save the final multichannel image
-    imwrite(output_path, multichannel_image)
+    plt.imsave(output_path, multichannel_image)
+    return multichannel_image
 
 def main():
-    input_path =
-    output_path =
+    input_path = r"C:\Users\Ally\BMIF2025\MBI\CISC 881\881-test-repo\55514.jpg"
+    output_path = r"C:\Users\Ally\BMIF2025\MBI\CISC 881\881-test-repo\multichannel.jpg"
 
     multichannel_image = Convert2Multichannel(input_path, output_path)
     plt.imshow(multichannel_image, cmap = 'Blues')
-    plt.title("Original??")
-    #print('hi')
-    #plt.imshow(multichannel_image, cmap = 'Greens')
+    plt.title("Original")
+    plt.show()
 
 
 if __name__ == '__main__':
