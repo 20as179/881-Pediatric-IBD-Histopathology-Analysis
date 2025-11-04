@@ -4,6 +4,11 @@ from typing import Annotated, Optional
 
 import vtk
 
+import numpy as np
+import cv2
+import matplotlib.pyplot as plt
+from skimage.color import rgb2hed, hed2rgb
+
 import slicer
 from slicer.i18n import tr as _
 from slicer.i18n import translate
@@ -30,7 +35,7 @@ class MyFirstModule(ScriptedLoadableModule):
 
     def __init__(self, parent):
         ScriptedLoadableModule.__init__(self, parent)
-        self.parent.title = _("My First Module")  # TODO: make this more human readable by adding spaces
+        self.parent.title = _("My First Histology Module")  # TODO: make this more human readable by adding spaces
         # TODO: set categories (folders where the module shows up in the module selector)
         self.parent.categories = [translate("qSlicerAbstractCoreModule", "Examples")]
         self.parent.dependencies = []  # TODO: add here list of module names that this module requires
@@ -72,18 +77,18 @@ def registerSampleData():
     SampleData.SampleDataLogic.registerCustomSampleDataSource(
         # Category and sample name displayed in Sample Data module
         category="MyFirstModule",
-        sampleName="MyFirstModule1",
+        sampleName="SampleHistologyIBD",
         # Thumbnail should have size of approximately 260x280 pixels and stored in Resources/Icons folder.
         # It can be created by Screen Capture module, "Capture all views" option enabled, "Number of images" set to "Single".
         thumbnailFileName=os.path.join(iconsPath, "MyFirstModule1.png"),
         # Download URL and target file name
-        uris="https://github.com/Slicer/SlicerTestingData/releases/download/SHA256/998cb522173839c78657f4bc0ea907cea09fd04e44601f17c82ea27927937b95",
-        fileNames="MyFirstModule1.nrrd",
+        uris="https://github.com/CRBS/CIL_RS/wiki/Download_CHOC_dataset",
+        fileNames="MyFirstModule1.jpg",
         # Checksum to ensure file integrity. Can be computed by this command:
         #  import hashlib; print(hashlib.sha256(open(filename, "rb").read()).hexdigest())
         checksums="SHA256:998cb522173839c78657f4bc0ea907cea09fd04e44601f17c82ea27927937b95",
         # This node name will be used when the data set is loaded
-        nodeNames="MyFirstModule1",
+        nodeNames="HistologyIBD",
     )
 
     # MyFirstModule2
