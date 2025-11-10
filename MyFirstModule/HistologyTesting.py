@@ -82,7 +82,7 @@ def registerSampleData():
         # It can be created by Screen Capture module, "Capture all views" option enabled, "Number of images" set to "Single".
         thumbnailFileName=os.path.join(iconsPath, "MyFirstModule1.png"),
         # Download URL and target file name
-        uris="https://github.com/CRBS/CIL_RS/wiki/Download_CHOC_dataset",
+        uris="https://github.com/20as179/881-test-repo/releases/tag/v1.0",
         fileNames="MyFirstModule1.jpg",
         # Checksum to ensure file integrity. Can be computed by this command:
         #  import hashlib; print(hashlib.sha256(open(filename, "rb").read()).hexdigest())
