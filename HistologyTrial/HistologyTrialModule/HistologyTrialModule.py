@@ -14,32 +14,54 @@ from slicer.parameterNodeWrapper import (
     WithinRange,
 )
 
-from slicer import vtkMRMLScalarVolumeNode
-from slicer import vtkMRMLMarkupsFiducialNode
+from slicer import vtkMRMLScalarVolumeNode, vtkMRMLVectorVolumeNode
+
+#import numpy as np
+try:
+    import cv2
+except ModuleNotFoundError:
+    slicer.util.pip_install("opencv-python")
+    import cv2
+
+try:
+    import matplotlib.pyplot
+except ModuleNotFoundError:
+    slicer.util.pip_install("matplotlib.pyplot")
+    import matplotlib.pyplot
+
+try:
+    import skimage.color
+except ModuleNotFoundError:
+    slicer.util.pip_install("skimage.color")
+    import skimage.color
+
+
+#import matplotlib.pyplot as plt
+#from skimage.color import rgb2hed, hed2rgb
 
 
 #
-# MyFirstModule
+# HistologyTrialModule
 #
 
 
-class MyFirstModule(ScriptedLoadableModule):
+class HistologyTrialModule(ScriptedLoadableModule):
     """Uses ScriptedLoadableModule base class, available at:
     https://github.com/Slicer/Slicer/blob/main/Base/Python/slicer/ScriptedLoadableModule.py
     """
 
     def __init__(self, parent):
         ScriptedLoadableModule.__init__(self, parent)
-        self.parent.title = _("My First Module")  # TODO: make this more human readable by adding spaces
+        self.parent.title = _("HistologyTrialModule")  # TODO: make this more human readable by adding spaces
         # TODO: set categories (folders where the module shows up in the module selector)
         self.parent.categories = [translate("qSlicerAbstractCoreModule", "Examples")]
         self.parent.dependencies = []  # TODO: add here list of module names that this module requires
-        self.parent.contributors = ["Ally Shi (CISC 881)", "Laavanya Joshi (CISC 881)"]  # TODO: replace with "Firstname Lastname (Organization)"
+        self.parent.contributors = ["Laavanya and Ally"]  # TODO: replace with "Firstname Lastname (Organization)"
         # TODO: update with short description of the module and a link to online module documentation
         # _() function marks text as translatable to other languages
         self.parent.helpText = _("""
 This is an example of scripted loadable module bundled in an extension.
-See more information in <a href="https://github.com/organization/projectname#MyFirstModule">module documentation</a>.
+See more information in <a href="https://github.com/organization/projectname#HistologyTrialModule">module documentation</a>.
 """)
         # TODO: replace with organization, grant and thanks
         self.parent.acknowledgementText = _("""
@@ -68,69 +90,45 @@ def registerSampleData():
     # To ensure that the source code repository remains small (can be downloaded and installed quickly)
     # it is recommended to store data sets that are larger than a few MB in a Github release.
 
-    # MyFirstModule1
+    # HistologyTrialModule1
     SampleData.SampleDataLogic.registerCustomSampleDataSource(
         # Category and sample name displayed in Sample Data module
-        category="MyFirstModule",
-        sampleName="MyFirstModule1",
+        category="HistologyTrialModule",
+        sampleName="HistologyTrialModule1",
         # Thumbnail should have size of approximately 260x280 pixels and stored in Resources/Icons folder.
         # It can be created by Screen Capture module, "Capture all views" option enabled, "Number of images" set to "Single".
-        thumbnailFileName=os.path.join(iconsPath, "MyFirstModule1.png"),
+        thumbnailFileName=os.path.join(iconsPath, "HistologyTrialModule1.png"),
         # Download URL and target file name
         uris="https://github.com/Slicer/SlicerTestingData/releases/download/SHA256/998cb522173839c78657f4bc0ea907cea09fd04e44601f17c82ea27927937b95",
-        fileNames="MyFirstModule1.nrrd",
+        fileNames="HistologyTrialModule1.nrrd",
         # Checksum to ensure file integrity. Can be computed by this command:
         #  import hashlib; print(hashlib.sha256(open(filename, "rb").read()).hexdigest())
         checksums="SHA256:998cb522173839c78657f4bc0ea907cea09fd04e44601f17c82ea27927937b95",
         # This node name will be used when the data set is loaded
-        nodeNames="MyFirstModule1",
+        nodeNames="HistologyTrialModule1",
     )
 
-    # MyFirstModule2
+    # HistologyTrialModule2
     SampleData.SampleDataLogic.registerCustomSampleDataSource(
         # Category and sample name displayed in Sample Data module
-        category="MyFirstModule",
-        sampleName="MyFirstModule2",
-        thumbnailFileName=os.path.join(iconsPath, "MyFirstModule2.png"),
+        category="HistologyTrialModule",
+        sampleName="HistologyTrialModule2",
+        thumbnailFileName=os.path.join(iconsPath, "HistologyTrialModule2.png"),
         # Download URL and target file name
         uris="https://github.com/Slicer/SlicerTestingData/releases/download/SHA256/1a64f3f422eb3d1c9b093d1a18da354b13bcf307907c66317e2463ee530b7a97",
-        fileNames="MyFirstModule2.nrrd",
+        fileNames="HistologyTrialModule2.nrrd",
         checksums="SHA256:1a64f3f422eb3d1c9b093d1a18da354b13bcf307907c66317e2463ee530b7a97",
         # This node name will be used when the data set is loaded
-        nodeNames="MyFirstModule2",
+        nodeNames="HistologyTrialModule2",
     )
 
 
 #
-# MyFirstModuleParameterNode
+# HistologyTrialModuleWidget
 #
 
 
-@parameterNodeWrapper
-class MyFirstModuleParameterNode:
-    """
-    The parameters needed by module.
-
-    inputVolume - The volume to threshold.
-    imageThreshold - The value at which to threshold the input volume.
-    invertThreshold - If true, will invert the threshold.
-    thresholdedVolume - The output volume that will contain the thresholded volume.
-    invertedVolume - The output volume that will contain the inverted thresholded volume.
-    """
-
-    inputVolume: vtkMRMLMarkupsFiducialNode #originally: vtkMRMLScalarVolumeNode
-    imageThreshold: Annotated[float, WithinRange(-100, 500)] = 100
-    invertThreshold: bool = False
-    thresholdedVolume: vtkMRMLScalarVolumeNode
-    invertedVolume: vtkMRMLScalarVolumeNode
-
-
-#
-# MyFirstModuleWidget
-#
-
-
-class MyFirstModuleWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
+class HistologyTrialModuleWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     """Uses ScriptedLoadableModuleWidget base class, available at:
     https://github.com/Slicer/Slicer/blob/main/Base/Python/slicer/ScriptedLoadableModule.py
     """
@@ -149,7 +147,7 @@ class MyFirstModuleWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         # Load widget from .ui file (created by Qt Designer).
         # Additional widgets can be instantiated manually and added to self.layout.
-        uiWidget = slicer.util.loadUI(self.resourcePath("UI/MyFirstModule.ui"))
+        uiWidget = slicer.util.loadUI(self.resourcePath("UI/HistologyTrialModule.ui"))
         self.layout.addWidget(uiWidget)
         self.ui = slicer.util.childWidgetVariables(uiWidget)
 
@@ -160,7 +158,7 @@ class MyFirstModuleWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         # Create logic class. Logic implements all computations that should be possible to run
         # in batch mode, without a graphical user interface.
-        self.logic = MyFirstModuleLogic()
+        self.logic = HistologyTrialModuleLogic()
 
         # Connections
 
@@ -171,8 +169,6 @@ class MyFirstModuleWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         # Buttons
         self.ui.applyButton.connect("clicked(bool)", self.onApplyButton)
 
-        # Make sure parameter node is initialized (needed for module reload)
-        self.initializeParameterNode()
 
     def cleanup(self) -> None:
         """Called when the application closes and the module widget is destroyed."""
@@ -181,7 +177,7 @@ class MyFirstModuleWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     def enter(self) -> None:
         """Called each time the user opens this module."""
         # Make sure parameter node exists and observed
-        self.initializeParameterNode()
+        pass#self.initializeParameterNode()
 
     def exit(self) -> None:
         """Called each time the user opens a different module."""
@@ -194,51 +190,14 @@ class MyFirstModuleWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     def onSceneStartClose(self, caller, event) -> None:
         """Called just before the scene is closed."""
         # Parameter node will be reset, do not use it anymore
-        self.setParameterNode(None)
+        pass#self.setParameterNode(None)
 
     def onSceneEndClose(self, caller, event) -> None:
         """Called just after the scene is closed."""
         # If this module is shown while the scene is closed then recreate a new parameter node immediately
         if self.parent.isEntered:
-            self.initializeParameterNode()
+            pass#self.initializeParameterNode()
 
-    def initializeParameterNode(self) -> None:
-        """Ensure parameter node exists and observed."""
-        # Parameter node stores all user choices in parameter values, node selections, etc.
-        # so that when the scene is saved and reloaded, these settings are restored.
-
-        self.setParameterNode(self.logic.getParameterNode())
-
-        # Select default input nodes if nothing is selected yet to save a few clicks for the user
-        if not self._parameterNode.inputVolume:
-            firstVolumeNode = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLScalarVolumeNode")
-            if firstVolumeNode:
-                self._parameterNode.inputVolume = firstVolumeNode
-
-    def setParameterNode(self, inputParameterNode: Optional[MyFirstModuleParameterNode]) -> None:
-        """
-        Set and observe parameter node.
-        Observation is needed because when the parameter node is changed then the GUI must be updated immediately.
-        """
-
-        if self._parameterNode:
-            self._parameterNode.disconnectGui(self._parameterNodeGuiTag)
-            self.removeObserver(self._parameterNode, vtk.vtkCommand.ModifiedEvent, self._checkCanApply)
-        self._parameterNode = inputParameterNode
-        if self._parameterNode:
-            # Note: in the .ui file, a Qt dynamic property called "SlicerParameterName" is set on each
-            # ui element that needs connection.
-            self._parameterNodeGuiTag = self._parameterNode.connectGui(self.ui)
-            self.addObserver(self._parameterNode, vtk.vtkCommand.ModifiedEvent, self._checkCanApply)
-            self._checkCanApply()
-
-    def _checkCanApply(self, caller=None, event=None) -> None:
-        if self._parameterNode and self._parameterNode.inputVolume: #and self._parameterNode.thresholdedVolume:
-            self.ui.applyButton.toolTip = _("Compute center of mass")
-            self.ui.applyButton.enabled = True
-        else:
-            self.ui.applyButton.toolTip = _("Select input point list")
-            self.ui.applyButton.enabled = False
 
     def onApplyButton(self) -> None:
         """Run processing when user clicks "Apply" button."""
@@ -246,8 +205,6 @@ class MyFirstModuleWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             # Compute output
             self.logic.process(self.ui.inputSelector.currentNode(), self.ui.outputSelector.currentNode(),
                                self.ui.imageThresholdSliderWidget.value, self.ui.invertOutputCheckBox.checked)
-
-            self.ui.centerOfMassValueLabel.text = str(self.logic.centerOfMass)
 
             # Compute inverted output (if needed)
             if self.ui.invertedOutputSelector.currentNode():
@@ -257,11 +214,11 @@ class MyFirstModuleWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
 
 #
-# MyFirstModuleLogic
+# HistologyTrialModuleLogic
 #
 
 
-class MyFirstModuleLogic(ScriptedLoadableModuleLogic):
+class HistologyTrialModuleLogic(ScriptedLoadableModuleLogic):
     """This class should implement all the actual
     computation done by your module.  The interface
     should be such that other python code can import
@@ -275,40 +232,47 @@ class MyFirstModuleLogic(ScriptedLoadableModuleLogic):
         """Called when the logic class is instantiated. Can be used for initializing member variables."""
         ScriptedLoadableModuleLogic.__init__(self)
 
-    #def initializeParameterNode(self):
-    #   return firstVolumeNode
+    def getSegmentedHistologyImages(sef,markupsNode, vtkMRMLVectorVolumeNode):
 
-    def getParameterNode(self):
-        return MyFirstModuleParameterNode(super().getParameterNode())
+        volume_node = slicer.mrmlScene.GetFirstNodeByClass(vtkMRMLVectorVolumeNode)
 
-    def getCenterOfMass(sef,markupsNode):
-        centerOfMass = [0,0,0]
+        array = slicer.util.arrayFromVolume(volume_node)
+        print(array)
 
-        import numpy as np
-        sumPos = np.zeros(3)
-        for i in range(markupsNode.GetNumberOfControlPoints()):
-            pos = markupsNode.GetNthControlPointPosition(i)
-            sumPos += pos
+        array = arrayFromVolume(getNode(vtkMRMLVectorVolumeNode))
 
-        centerOfMass = sumPos / markupsNode.GetNumberOfControlPoints()
-        logging.info(f"Center of mass for {markupsNode.GetName()}: {centerOfMass}")
 
-        return centerOfMass
 
-    def process(self, inputMarkups, outputVolume, imageThreshold, enableScreenshots=0):
-        """
-        Compute center of mass of input markup points
-        :param inputMarkups:
-        :param outputVolume:
-        :param imageThreshold:
-        :param enableScreenshots:
-        :return:
-        """
-        self.centerOfMass = self.getCenterOfMass(inputMarkups)
-        return True
+        # load images
+        pass#resized_image = cv2.imread(input_path)
 
-    #DEFAULT PROCESS FUNCTION
-    '''def process(self,
+        # convert to HED and separate channels
+        image_rgb = cv2.cvtColor(resized_image, cv2.COLOR_BGR2RGB)  # convert to RGB
+        image_hed = rgb2hed(image_rgb)  # Convert RGB to HED
+
+        null = np.zeros_like(image_hed[:, :, 0])  # https://scikit-image.org/docs/0.25.x/auto_examples/color_exposure/plot_ihc_color_separation.html
+        fig, axes = plt.subplots(2, 2, figsize=(7, 6), sharex=True, sharey=True)
+        ax = axes.ravel()
+
+        ihc_h = hed2rgb(np.stack((image_hed[:, :, 0], null, null), axis=-1))
+        ax[1].imshow(ihc_h)
+
+        #ax[1].set_title("Hematoxylin")
+        #print("test2")
+    '''
+        ihc_e = hed2rgb(np.stack((null, image_hed[:, :, 1], null), axis=-1))
+        ax[2].imshow(ihc_e)
+        #ax[2].set_title("Eosin")
+        #print("test")
+
+        ihc_d = hed2rgb(np.stack((null, null, image_hed[:, :, 2]), axis=-1))
+        ax[3].imshow(ihc_d)'''
+        #ax[3].set_title("DAB")
+        #print("test3")
+
+
+
+    def process(self,
                 inputVolume: vtkMRMLScalarVolumeNode,
                 outputVolume: vtkMRMLScalarVolumeNode,
                 imageThreshold: float,
@@ -323,36 +287,15 @@ class MyFirstModuleLogic(ScriptedLoadableModuleLogic):
         :param invert: if True then values above the threshold will be set to 0, otherwise values below are set to 0
         :param showResult: show output volume in slice viewers
         """
-
-        if not inputVolume or not outputVolume:
-            raise ValueError("Input or output volume is invalid")
-
-        import time
-
-        startTime = time.time()
-        logging.info("Processing started")
-
-        # Compute the thresholded output volume using the "Threshold Scalar Volume" CLI module
-        cliParams = {
-            "InputVolume": inputVolume.GetID(),
-            "OutputVolume": outputVolume.GetID(),
-            "ThresholdValue": imageThreshold,
-            "ThresholdType": "Above" if invert else "Below",
-        }
-        cliNode = slicer.cli.run(slicer.modules.thresholdscalarvolume, None, cliParams, wait_for_completion=True, update_display=showResult)
-        # We don't need the CLI module node anymore, remove it to not clutter the scene with it
-        slicer.mrmlScene.RemoveNode(cliNode)
-
-        stopTime = time.time()
-        logging.info(f"Processing completed in {stopTime-startTime:.2f} seconds")'''
+        pass
 
 
 #
-# MyFirstModuleTest
+# HistologyTrialModuleTest
 #
 
 
-class MyFirstModuleTest(ScriptedLoadableModuleTest):
+class HistologyTrialModuleTest(ScriptedLoadableModuleTest):
     """
     This is the test case for your scripted module.
     Uses ScriptedLoadableModuleTest base class, available at:
@@ -366,9 +309,9 @@ class MyFirstModuleTest(ScriptedLoadableModuleTest):
     def runTest(self):
         """Run as few or as many tests as needed here."""
         self.setUp()
-        self.test_MyFirstModule1()
+        self.test_HistologyTrialModule1()
 
-    def test_MyFirstModule1(self):
+    def test_HistologyTrialModule1(self):
         """Ideally you should have several levels of tests.  At the lowest level
         tests should exercise the functionality of the logic with different inputs
         (both valid and invalid).  At higher levels your tests should emulate the
@@ -387,7 +330,7 @@ class MyFirstModuleTest(ScriptedLoadableModuleTest):
         import SampleData
 
         registerSampleData()
-        inputVolume = SampleData.downloadSample("MyFirstModule1")
+        inputVolume = SampleData.downloadSample("HistologyTrialModule1")
         self.delayDisplay("Loaded test data set")
 
         inputScalarRange = inputVolume.GetImageData().GetScalarRange()
@@ -399,7 +342,7 @@ class MyFirstModuleTest(ScriptedLoadableModuleTest):
 
         # Test the module logic
 
-        logic = MyFirstModuleLogic()
+        logic = HistologyTrialModuleLogic()
 
         # Test algorithm with non-inverted threshold
         logic.process(inputVolume, outputVolume, threshold, True)
