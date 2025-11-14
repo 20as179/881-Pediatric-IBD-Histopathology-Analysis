@@ -16,7 +16,6 @@ from slicer.parameterNodeWrapper import (
 
 from slicer import vtkMRMLVectorVolumeNode
 
-#import numpy as np
 
 try:
     import numpy as np
@@ -228,10 +227,28 @@ class HistologyTrialModuleWidget(ScriptedLoadableModuleWidget, VTKObservationMix
         """Run processing when user clicks "Apply" button."""
         with slicer.util.tryWithErrorDisplay(_("Failed to compute results."), waitCursor=True):
             # Compute output
-            self.logic.process(self.ui.inputSelector.currentNode(),
+            hema_stack_node, eosin_stack_node = self.logic.process(self.ui.inputSelector.currentNode(),
                                self.ui.outputSelector.currentNode(),
                                self.ui.imageThresholdSliderWidget.value,
                                self.ui.invertOutputCheckBox.checked)
+
+            green = slicer.app.layoutManager().sliceWidget("Green")
+            green_comp = green.mrmlSliceCompositeNode()
+            green_comp.SetBackgroundVolumeID(hema_stack_node.GetID())
+            green.fitSliceToBackground()
+
+            yellow = slicer.app.layoutManager().sliceWidget("Yellow")
+            yellow_comp = yellow.mrmlSliceCompositeNode()
+            yellow_comp.SetBackgroundVolumeID(eosin_stack_node.GetID())
+            yellow.fitSliceToBackground()
+
+
+            volumeNode = self.ui.inputSelector.currentNode()
+            if not volumeNode:
+                logging.warning("No volume selected")
+                return
+
+            #self.logic.showHematoxylinVolume(volumeNode)
 
             # Compute inverted output (if needed)
             if self.ui.invertedOutputSelector.currentNode():
@@ -241,12 +258,7 @@ class HistologyTrialModuleWidget(ScriptedLoadableModuleWidget, VTKObservationMix
                                    self.ui.imageThresholdSliderWidget.value,
                                    not self.ui.invertOutputCheckBox.checked, showResult=False)
 
-            volumeNode = self.ui.inputSelector.currentNode()
-            if not volumeNode:
-                logging.warning("No volume selected")
-                return
 
-            self.logic.showHematoxylinVolume(volumeNode)
 
 
 #
@@ -282,6 +294,9 @@ class HistologyTrialModuleLogic(ScriptedLoadableModuleLogic):
         #volume_array = sitk.GetArrayFromImage(volume)
         #print(f"Volume shape: {volume_array.shape}")
 
+        #volume_array = volume_array.transpose((1, 0, 2, 3))
+        volume_array = volume_array.astype(np.float32) / 255.0
+
         hematoxylin_slices = []
         eosin_slices = []
         for i in range(volume_array.shape[0]):
@@ -290,24 +305,31 @@ class HistologyTrialModuleLogic(ScriptedLoadableModuleLogic):
             # convert to HED
             image_hed = rgb2hed(image_rgb)
 
+            null = np.zeros_like(image_hed[:, :, 0])
+            hematoxylin = hed2rgb(np.stack((image_hed[:, :, 0], null, null), axis=-1))
+            eosin = hed2rgb(np.stack((null, image_hed[:, :, 0], null), axis=-1))
+
             # Normalize to [0,1] range
-            hematoxylin = image_hed[:, :, 0]
+            '''hematoxylin = image_hed[:, :, 0]
             eosin = image_hed[:, :, 1]
 
             hematoxylin = (hematoxylin - hematoxylin.min()) / (hematoxylin.max() - hematoxylin.min())
             eosin = (eosin - eosin.min()) / (eosin.max() - eosin.min())
+            eosin_slices.append(eosin)'''
 
             hematoxylin_slices.append(hematoxylin)
             eosin_slices.append(eosin)
 
         # stack slices and convert to volume
-        hematoxylin_stack = (np.stack(hematoxylin_slices, axis=0)).astype(np.float32)
-
-        hema_stack_node = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLVectorVolumeNode', "Hema Volume")
-
+        hematoxylin_stack = (np.stack(hematoxylin_slices, axis=0))#.astype(np.float32)
+        hema_stack_node = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLVectorVolumeNode', "Hematoxylin Staining")
         slicer.util.updateVolumeFromArray(hema_stack_node, hematoxylin_stack)
 
-        return hema_stack_node
+        eosin_stack = (np.stack(eosin_slices, axis=0))#.astype(np.float32)
+        eosin_stack_node = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLVectorVolumeNode', "Eosin Staining")
+        slicer.util.updateVolumeFromArray(eosin_stack_node, eosin_stack)
+
+        return hema_stack_node, eosin_stack_node
 
 
         #hematoxylin_volume = sitk.GetImageFromArray(hematoxylin_stack, isVector=False)
@@ -322,12 +344,6 @@ class HistologyTrialModuleLogic(ScriptedLoadableModuleLogic):
         '''eosin_volume_path = os.path.join(output_volume_dir, f"{os.path.basename(input_dir)}_eosin_volume.nrrd")
         sitk.WriteImage(eosin_volume, eosin_volume_path)
         print(f"Saved volume as: {eosin_volume_path}")'''
-
-
-
-
-
-
 
 
         # load images
@@ -371,10 +387,10 @@ class HistologyTrialModuleLogic(ScriptedLoadableModuleLogic):
         #print("test3")
 
 
-    def showHematoxylinVolume(self, hema_stack_node):
+    '''def showHematoxylinVolume(self, hema_stack_node):
         green = slicer.app.layoutManager().sliceWidget("Green")
         green_comp = green.mrmlSliceCompositeNode()
-        green_comp.SetBackgroundVolumeID(hema_stack_node.GetID())
+        green_comp.SetBackgroundVolumeID(hema_stack_node.GetID())'''
         #slicer.app.applicationLogic().GetSliceLogic("Green").FitSliceToVolume(hema_stack_node)
 
 
@@ -394,13 +410,13 @@ class HistologyTrialModuleLogic(ScriptedLoadableModuleLogic):
         :param invert: if True then values above the threshold will be set to 0, otherwise values below are set to 0
         :param showResult: show output volume in slice viewers
         """
-        self.hema_stack_node = self.getSegmentedHistologyImages(inputVolume)
+        hema_stack_node, eosin_stack_node = self.getSegmentedHistologyImages(inputVolume)
 
         '''hema_stack_node.CreateDefaultDisplayNodes()
         slicer.util.setSliceViewerLayers(background=hema_stack_node)
         slicer.util.resetSliceViews()'''
 
-        return True
+        return hema_stack_node, eosin_stack_node
 
         #pass WHAT SHE ADDED
 
