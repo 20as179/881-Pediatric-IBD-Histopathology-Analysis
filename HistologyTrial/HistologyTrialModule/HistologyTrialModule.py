@@ -307,22 +307,14 @@ class HistologyTrialModuleLogic(ScriptedLoadableModuleLogic):
 
             null = np.zeros_like(image_hed[:, :, 0])
             hematoxylin = hed2rgb(np.stack((image_hed[:, :, 0], null, null), axis=-1))
-            eosin = hed2rgb(np.stack((null, image_hed[:, :, 0], null), axis=-1))
-
-            # Normalize to [0,1] range
-            '''hematoxylin = image_hed[:, :, 0]
-            eosin = image_hed[:, :, 1]
-
-            hematoxylin = (hematoxylin - hematoxylin.min()) / (hematoxylin.max() - hematoxylin.min())
-            eosin = (eosin - eosin.min()) / (eosin.max() - eosin.min())
-            eosin_slices.append(eosin)'''
+            eosin = hed2rgb(np.stack((null, image_hed[:, :, 1], null), axis=-1))
 
             hematoxylin_slices.append(hematoxylin)
             eosin_slices.append(eosin)
 
         # stack slices and convert to volume
         hematoxylin_stack = (np.stack(hematoxylin_slices, axis=0))#.astype(np.float32)
-        hema_stack_node = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLVectorVolumeNode', "Hematoxylin Staining")
+        hema_stack_node = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLVectorVolumeNode', f"Hematoxylin Staining")
         slicer.util.updateVolumeFromArray(hema_stack_node, hematoxylin_stack)
 
         eosin_stack = (np.stack(eosin_slices, axis=0))#.astype(np.float32)
@@ -331,68 +323,8 @@ class HistologyTrialModuleLogic(ScriptedLoadableModuleLogic):
 
         return hema_stack_node, eosin_stack_node
 
-
-        #hematoxylin_volume = sitk.GetImageFromArray(hematoxylin_stack, isVector=False)
-        #print(hematoxylin_volume.shape)
-        '''hematoxylin_volume_path = os.path.join(output_volume_dir, f"{os.path.basename(input_dir)}_hematoxylin_volume.nrrd")
-        sitk.WriteImage(hematoxylin_volume, hematoxylin_volume_path)
-        print(f"Saved volume as: {hematoxylin_volume_path}")'''
-
         eosin_stack = np.stack(eosin_slices, axis=0)
         eosin_volume = sitk.GetImageFromArray(eosin_stack, isVector=False)
-        #print(eosin_volume.shape)
-        '''eosin_volume_path = os.path.join(output_volume_dir, f"{os.path.basename(input_dir)}_eosin_volume.nrrd")
-        sitk.WriteImage(eosin_volume, eosin_volume_path)
-        print(f"Saved volume as: {eosin_volume_path}")'''
-
-
-        # load images
-        #resized_image = cv2.imread(input_path)
-
-        # convert to HED and separate channels
-        '''image_rgb = cv2.cvtColor(array, cv2.COLOR_BGR2RGB)  # convert to RGB
-        image_hed = rgb2hed(image_rgb)  # Convert RGB to HED
-
-        hematoxylin = image_hed[:, :, 0]
-
-        null = np.zeros_like(image_hed[:, :, 0])   https://scikit-image.org/docs/0.25.x/auto_examples/color_exposure/plot_ihc_color_separation.html
-        #fig, axes = plt.subplots(2, 2, figsize=(7, 6), sharex=True, sharey=True)
-        #ax = axes.ravel()
-        ihc_h = hed2rgb(np.stack((image_hed[:, :, 0], null, null), axis=-1))
-
-        ihchNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLScalarVolumeNode")
-
-        # Set the image data
-        slicer.util.updateVolumeFromArray(ihchNode, hematoxylin)
-
-        # Optionally, adjust display properties
-        displayNode = ihchNode.GetDisplayNode()
-        displayNode.SetAndObserveColorNodeID(slicer.app.getColorNodes().GetID())'''
-
-
-        '''ax[1].imshow(ihc_h)
-        #ax[1].set_title("Hematoxylin")
-        #print("test2")'''
-
-        #return hematoxylin
-    '''
-        ihc_e = hed2rgb(np.stack((null, image_hed[:, :, 1], null), axis=-1))
-        ax[2].imshow(ihc_e)
-        #ax[2].set_title("Eosin")
-        #print("test")
-
-        ihc_d = hed2rgb(np.stack((null, null, image_hed[:, :, 2]), axis=-1))
-        ax[3].imshow(ihc_d)'''
-        #ax[3].set_title("DAB")
-        #print("test3")
-
-
-    '''def showHematoxylinVolume(self, hema_stack_node):
-        green = slicer.app.layoutManager().sliceWidget("Green")
-        green_comp = green.mrmlSliceCompositeNode()
-        green_comp.SetBackgroundVolumeID(hema_stack_node.GetID())'''
-        #slicer.app.applicationLogic().GetSliceLogic("Green").FitSliceToVolume(hema_stack_node)
-
 
 
     def process(self,
@@ -411,10 +343,6 @@ class HistologyTrialModuleLogic(ScriptedLoadableModuleLogic):
         :param showResult: show output volume in slice viewers
         """
         hema_stack_node, eosin_stack_node = self.getSegmentedHistologyImages(inputVolume)
-
-        '''hema_stack_node.CreateDefaultDisplayNodes()
-        slicer.util.setSliceViewerLayers(background=hema_stack_node)
-        slicer.util.resetSliceViews()'''
 
         return hema_stack_node, eosin_stack_node
 
