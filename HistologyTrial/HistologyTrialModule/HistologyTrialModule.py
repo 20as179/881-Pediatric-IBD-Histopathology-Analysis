@@ -308,6 +308,8 @@ class HistologyTrialModuleLogic(ScriptedLoadableModuleLogic):
             null = np.zeros_like(image_hed[:, :, 0])
             hematoxylin = hed2rgb(np.stack((image_hed[:, :, 0], null, null), axis=-1))
             eosin = hed2rgb(np.stack((null, image_hed[:, :, 1], null), axis=-1))
+            hematoxylin = np.rot90(hematoxylin, k = 2)
+            eosin = np.rot90(eosin, k = 2)
 
             hematoxylin_slices.append(hematoxylin)
             eosin_slices.append(eosin)
