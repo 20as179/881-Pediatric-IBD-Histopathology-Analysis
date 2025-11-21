@@ -21,4 +21,4 @@ For customized data augmentation, these parameters can be adjusted according to 
 
 The model was pretrained using ImageNet weights and its layers have been customized based on other histology classification models using VGG16 as a baseline. The customized layers are adjusted to account for binary classification of histology images. The model uses weakly supervised training of pediatric IBD data from 23 patients (951 individual slides in total) with each slide classified as UC or CD depending on the patient's overall diagnosis. A sample csv file is provided at ________.csv containing each slide's information and label from the training subset of the data.
 
-In 3D Slicer, the output for "Diagnosis" will either be UC or CD based on an average of predictive scores for the full stack of slices.
+In 3D Slicer, the output for "Diagnosis" will either be UC or CD based on the average of predictive scores for the full stack of slices.
