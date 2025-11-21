@@ -10,7 +10,7 @@ The module accepts a volumetric stack of histology images. To properly utilize t
 
 ## Training
 ### WSI Preprocessing
-The notebook ______.ipynb focuses on cropping the raw images (.jpgs) into 1000x1000 pixel fields such that outer borders of whitespace (noise) are removed. Images must be of the same size in order to be stacked, and dimensions less than 1000 pixels are filled in with empty values. The volumes are saved as .nrrd files and stored under each patient's directory as OUTPUT_VOLUME. It also performs hematoxylin and eosin stain separation and saves the isolated hematoxylin channels as .jpgs for further processing.
+The notebook Hematoxylin Images for Model.ipynb focuses on cropping the raw images (.jpgs) into 1000x1000 pixel fields such that outer borders of whitespace (noise) are removed. Images must be of the same size in order to be stacked, and dimensions less than 1000 pixels are filled in with empty values. The volumes are saved as .nrrd files and stored under each patient's directory as OUTPUT_VOLUME. It also performs hematoxylin and eosin stain separation and saves the isolated hematoxylin channels as .jpgs for further processing.
 
 ### VGG16 Model Training
 Training is located in ________.ipynb. VGG16 accepts inputs of 224x224, so each slice of an input is iteratively downsized to match requirements. Data augmentation makes further adjustments to the images using ImageDataGenerator. For customized data augmentation, these parameters can be adjusted according to the user's wishes for diverse results.
