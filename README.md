@@ -12,11 +12,7 @@ The module accepts a volumetric stack of histology images. To properly utilize t
 ### WSI Cropping and Resizing
 Preprocessing is located in ______.ipynb. The first step focuses on cropping the raw images (.jpgs) into 1000x1000 pixel fields such that outer borders of whitespace (noise) are removed. Images must be of the same size in order to be stacked, and dimensions less than 1000 pixels are filled in with empty values. The volumes are saved as .nrrd files and stored under each patient's directory as OUTPUT_VOLUME.
 ### VGG16 Model Training
-Training is located in ________.ipynb. VGG16 accepts inputs of 224x224, so each slice of an input is iteratively downsized to match requirements. Data augmentation makes further adjustments to the images using the following parameters in ImageDataGenerator:
-- insert
-- parameters
-- adjust
-- later
+Training is located in ________.ipynb. VGG16 accepts inputs of 224x224, so each slice of an input is iteratively downsized to match requirements. Data augmentation makes further adjustments to the images using ImageDataGenerator.
 For customized data augmentation, these parameters can be adjusted according to the user's wishes for diverse results.
 
 The model was pretrained using ImageNet weights and its layers have been customized based on other histology classification models using VGG16 as a baseline. The customized layers are adjusted to account for binary classification of histology images. The model uses weakly supervised training of pediatric IBD data from 23 patients (951 individual slides in total) with each slide classified as UC or CD depending on the patient's overall diagnosis. A sample csv file is provided at ________.csv containing each slide's information and label from the training subset of the data.
