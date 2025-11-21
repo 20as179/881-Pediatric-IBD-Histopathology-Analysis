@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Annotated, Optional
+#from typing import Annotated, Optional
 
 import vtk
 
@@ -50,10 +50,19 @@ except ModuleNotFoundError:
 
 from skimage.color import rgb2hed, hed2rgb
 
+try:
+    import tensorflow
+except ModuleNotFoundError:
+    slicer.util.pip_install("tensorflow")
+    import tensorflow
 
+try:
+    import keras
+except ModuleNotFoundError:
+    slicer.util.pip_install("keras")
+    import keras
 
-#import matplotlib.pyplot as plt
-#from skimage.color import rgb2hed, hed2rgb
+from keras.models import load_model
 
 
 #
@@ -174,7 +183,11 @@ class HistologyTrialModuleWidget(ScriptedLoadableModuleWidget, VTKObservationMix
 
         # Create logic class. Logic implements all computations that should be possible to run
         # in batch mode, without a graphical user interface.
-        self.logic = HistologyTrialModuleLogic()
+        #self.logic = HistologyTrialModuleLogic()
+
+        model_path = os.path.join(self.resourcePath("VGG16_histology_classification.keras"))
+        #full_path = self.resourcePath(r"Resources/VGG16_histology_classification.keras")
+        self.logic = HistologyTrialModuleLogic(model_path)
 
         # Connections
 
@@ -227,10 +240,11 @@ class HistologyTrialModuleWidget(ScriptedLoadableModuleWidget, VTKObservationMix
         """Run processing when user clicks "Apply" button."""
         with slicer.util.tryWithErrorDisplay(_("Failed to compute results."), waitCursor=True):
             # Compute output
-            hema_stack_node, eosin_stack_node = self.logic.process(self.ui.inputSelector.currentNode(),
+            hema_stack_node, eosin_stack_node, diagnosis = self.logic.process(self.ui.inputSelector.currentNode(),
                                self.ui.outputSelector.currentNode(),
                                self.ui.imageThresholdSliderWidget.value,
                                self.ui.invertOutputCheckBox.checked)
+
 
             green = slicer.app.layoutManager().sliceWidget("Green")
             green_comp = green.mrmlSliceCompositeNode()
@@ -243,12 +257,14 @@ class HistologyTrialModuleWidget(ScriptedLoadableModuleWidget, VTKObservationMix
             yellow.fitSliceToBackground()
 
 
+            self.ui.diagnosisLabel.text = str(self.logic.diagnosis)
+
+
             volumeNode = self.ui.inputSelector.currentNode()
             if not volumeNode:
                 logging.warning("No volume selected")
                 return
 
-            #self.logic.showHematoxylinVolume(volumeNode)
 
             # Compute inverted output (if needed)
             if self.ui.invertedOutputSelector.currentNode():
@@ -257,8 +273,6 @@ class HistologyTrialModuleWidget(ScriptedLoadableModuleWidget, VTKObservationMix
                                    self.ui.invertedOutputSelector.currentNode(),
                                    self.ui.imageThresholdSliderWidget.value,
                                    not self.ui.invertOutputCheckBox.checked, showResult=False)
-
-
 
 
 #
@@ -276,25 +290,20 @@ class HistologyTrialModuleLogic(ScriptedLoadableModuleLogic):
     https://github.com/Slicer/Slicer/blob/main/Base/Python/slicer/ScriptedLoadableModule.py
     """
 
-    def __init__(self) -> None:
+    def __init__(self, model_path) -> None:
         """Called when the logic class is instantiated. Can be used for initializing member variables."""
         ScriptedLoadableModuleLogic.__init__(self)
+
+        super().__init__()
+        self.model_path = model_path
+
+        self.model = tensorflow.keras.models.load_model(self.model_path)
 
 
     def getSegmentedHistologyImages(self, vtkMRMLVectorVolumeNode):
 
-        #volume_node = slicer.mrmlScene.GetFirstNodeByClass(vtkMRMLVectorVolumeNode)
-
-        #array = slicer.util.arrayFromVolume(volume_node)
-        #print(array)
-
         volume_array = slicer.util.arrayFromVolume(vtkMRMLVectorVolumeNode)
 
-        #volume = sitk.ReadImage(input_volume)
-        #volume_array = sitk.GetArrayFromImage(volume)
-        #print(f"Volume shape: {volume_array.shape}")
-
-        #volume_array = volume_array.transpose((1, 0, 2, 3))
         volume_array = volume_array.astype(np.float32) / 255.0
 
         hematoxylin_slices = []
@@ -314,6 +323,25 @@ class HistologyTrialModuleLogic(ScriptedLoadableModuleLogic):
             hematoxylin_slices.append(hematoxylin)
             eosin_slices.append(eosin)
 
+
+        model_results = []
+
+        for i in range(len(hematoxylin_slices)):
+
+            resized_hematoxylin = cv2.resize(hematoxylin_slices[i], (224, 224), interpolation=cv2.INTER_AREA)
+            resized_hematoxylin = np.expand_dims(resized_hematoxylin, axis=0)
+
+            prediction = self.model.predict(resized_hematoxylin)
+            model_results.append(prediction)
+
+
+        mean_prediction = np.mean(model_results)
+        if mean_prediction < 0.5:
+            diagnosis = "UC"
+        else:
+            diagnosis = "CD"
+
+
         # stack slices and convert to volume
         hematoxylin_stack = (np.stack(hematoxylin_slices, axis=0))#.astype(np.float32)
         hema_stack_node = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLVectorVolumeNode', f"Hematoxylin Staining")
@@ -323,10 +351,11 @@ class HistologyTrialModuleLogic(ScriptedLoadableModuleLogic):
         eosin_stack_node = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLVectorVolumeNode', "Eosin Staining")
         slicer.util.updateVolumeFromArray(eosin_stack_node, eosin_stack)
 
-        return hema_stack_node, eosin_stack_node
 
-        eosin_stack = np.stack(eosin_slices, axis=0)
-        eosin_volume = sitk.GetImageFromArray(eosin_stack, isVector=False)
+        return hema_stack_node, eosin_stack_node, diagnosis
+
+        #eosin_stack = np.stack(eosin_slices, axis=0)
+        #eosin_volume = sitk.GetImageFromArray(eosin_stack, isVector=False)
 
 
     def process(self,
@@ -344,9 +373,9 @@ class HistologyTrialModuleLogic(ScriptedLoadableModuleLogic):
         :param invert: if True then values above the threshold will be set to 0, otherwise values below are set to 0
         :param showResult: show output volume in slice viewers
         """
-        hema_stack_node, eosin_stack_node = self.getSegmentedHistologyImages(inputVolume)
+        hema_stack_node, eosin_stack_node, self.diagnosis = self.getSegmentedHistologyImages(inputVolume)
 
-        return hema_stack_node, eosin_stack_node
+        return hema_stack_node, eosin_stack_node, self.diagnosis
 
         #pass WHAT SHE ADDED
 
