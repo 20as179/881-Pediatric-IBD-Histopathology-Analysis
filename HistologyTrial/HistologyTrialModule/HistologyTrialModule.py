@@ -1,7 +1,5 @@
 import logging
 import os
-#from typing import Annotated, Optional
-
 import vtk
 
 import slicer
@@ -81,7 +79,7 @@ class HistologyTrialModule(ScriptedLoadableModule):
         # TODO: set categories (folders where the module shows up in the module selector)
         self.parent.categories = [translate("qSlicerAbstractCoreModule", "Examples")]
         self.parent.dependencies = []  # TODO: add here list of module names that this module requires
-        self.parent.contributors = ["Laavanya and Ally"]  # TODO: replace with "Firstname Lastname (Organization)"
+        self.parent.contributors = ["Laavanya Joshi and Ally Shi"]  # TODO: replace with "Firstname Lastname (Organization)"
         # TODO: update with short description of the module and a link to online module documentation
         # _() function marks text as translatable to other languages
         self.parent.helpText = _("""
@@ -240,11 +238,7 @@ class HistologyTrialModuleWidget(ScriptedLoadableModuleWidget, VTKObservationMix
         """Run processing when user clicks "Apply" button."""
         with slicer.util.tryWithErrorDisplay(_("Failed to compute results."), waitCursor=True):
             # Compute output
-            hema_stack_node, eosin_stack_node, diagnosis = self.logic.process(self.ui.inputSelector.currentNode(),
-                               self.ui.outputSelector.currentNode(),
-                               self.ui.imageThresholdSliderWidget.value,
-                               self.ui.invertOutputCheckBox.checked)
-
+            hema_stack_node, eosin_stack_node, diagnosis = self.logic.process(self.ui.inputSelector.currentNode())
 
             green = slicer.app.layoutManager().sliceWidget("Green")
             green_comp = green.mrmlSliceCompositeNode()
@@ -256,9 +250,7 @@ class HistologyTrialModuleWidget(ScriptedLoadableModuleWidget, VTKObservationMix
             yellow_comp.SetBackgroundVolumeID(eosin_stack_node.GetID())
             yellow.fitSliceToBackground()
 
-
             self.ui.diagnosisLabel.text = str(self.logic.diagnosis)
-
 
             volumeNode = self.ui.inputSelector.currentNode()
             if not volumeNode:
@@ -266,13 +258,6 @@ class HistologyTrialModuleWidget(ScriptedLoadableModuleWidget, VTKObservationMix
                 return
 
 
-            # Compute inverted output (if needed)
-            if self.ui.invertedOutputSelector.currentNode():
-                # If additional output volume is selected then result with inverted threshold is written there
-                self.logic.process(self.ui.inputSelector.currentNode(),
-                                   self.ui.invertedOutputSelector.currentNode(),
-                                   self.ui.imageThresholdSliderWidget.value,
-                                   not self.ui.invertOutputCheckBox.checked, showResult=False)
 
 
 #
@@ -296,11 +281,15 @@ class HistologyTrialModuleLogic(ScriptedLoadableModuleLogic):
 
         super().__init__()
         self.model_path = model_path
-
         self.model = tensorflow.keras.models.load_model(self.model_path)
 
 
     def getSegmentedHistologyImages(self, vtkMRMLVectorVolumeNode):
+        '''
+        This function takes in the volumetric stack of images, separated the hematoxylin and eosin channels, creating new volumetric images, and displays them. It also runs the CNN to generate a diagnosis for the given patient.
+        :param vtkMRMLVectorVolumeNode:
+        :return: hematoxylin volumetric data, eosin volumetric data, predictive diagnosis
+        '''
 
         volume_array = slicer.util.arrayFromVolume(vtkMRMLVectorVolumeNode)
 
@@ -314,32 +303,38 @@ class HistologyTrialModuleLogic(ScriptedLoadableModuleLogic):
             # convert to HED
             image_hed = rgb2hed(image_rgb)
 
+            # Perform the colour separation for each of the dyes
             null = np.zeros_like(image_hed[:, :, 0])
             hematoxylin = hed2rgb(np.stack((image_hed[:, :, 0], null, null), axis=-1))
             eosin = hed2rgb(np.stack((null, image_hed[:, :, 1], null), axis=-1))
+
+            # Rotate the image to view appropriately and in-line with the original image
             hematoxylin = np.rot90(hematoxylin, k = 2)
             eosin = np.rot90(eosin, k = 2)
 
+            # Add the image to the new volumetric image, one for each stain
             hematoxylin_slices.append(hematoxylin)
             eosin_slices.append(eosin)
 
-
+        # set up a cumulative score, that will contain the diagnosis from each image in the hematoxylin volumetric data
         model_results = []
 
         for i in range(len(hematoxylin_slices)):
 
+            # resize images to an appropriate size for VGG16
             resized_hematoxylin = cv2.resize(hematoxylin_slices[i], (224, 224), interpolation=cv2.INTER_AREA)
             resized_hematoxylin = np.expand_dims(resized_hematoxylin, axis=0)
 
+            # run each image through the model
             prediction = self.model.predict(resized_hematoxylin)
             model_results.append(prediction)
 
-
+        # Get an average score from entire volumetric data, and diagnose the patient based on the mean
         mean_prediction = np.mean(model_results)
         if mean_prediction < 0.5:
-            diagnosis = "UC"
+            diagnosis = "Ulcerative Colitis"
         else:
-            diagnosis = "CD"
+            diagnosis = "Crohn's Disease"
 
 
         # stack slices and convert to volume
@@ -354,14 +349,12 @@ class HistologyTrialModuleLogic(ScriptedLoadableModuleLogic):
 
         return hema_stack_node, eosin_stack_node, diagnosis
 
-        #eosin_stack = np.stack(eosin_slices, axis=0)
-        #eosin_volume = sitk.GetImageFromArray(eosin_stack, isVector=False)
 
 
     def process(self,
                 inputVolume: vtkMRMLVectorVolumeNode,
-                outputVolume: vtkMRMLVectorVolumeNode,
-                imageThreshold: float,
+                #outputVolume: vtkMRMLVectorVolumeNode,
+                #imageThreshold: float,
                 invert: bool = False,
                 showResult: bool = True) -> None:
         """
@@ -376,8 +369,6 @@ class HistologyTrialModuleLogic(ScriptedLoadableModuleLogic):
         hema_stack_node, eosin_stack_node, self.diagnosis = self.getSegmentedHistologyImages(inputVolume)
 
         return hema_stack_node, eosin_stack_node, self.diagnosis
-
-        #pass WHAT SHE ADDED
 
 
 #
@@ -434,16 +425,4 @@ class HistologyTrialModuleTest(ScriptedLoadableModuleTest):
 
         logic = HistologyTrialModuleLogic()
 
-        # Test algorithm with non-inverted threshold
-        logic.process(inputVolume, outputVolume, threshold, True)
-        outputScalarRange = outputVolume.GetImageData().GetScalarRange()
-        self.assertEqual(outputScalarRange[0], inputScalarRange[0])
-        self.assertEqual(outputScalarRange[1], threshold)
 
-        # Test algorithm with inverted threshold
-        logic.process(inputVolume, outputVolume, threshold, False)
-        outputScalarRange = outputVolume.GetImageData().GetScalarRange()
-        self.assertEqual(outputScalarRange[0], inputScalarRange[0])
-        self.assertEqual(outputScalarRange[1], inputScalarRange[1])
-
-        self.delayDisplay("Test passed")
